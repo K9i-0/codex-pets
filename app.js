@@ -7,8 +7,10 @@ const LEVEL_H = 15;
 const EDIT_W = 72;
 const CELL_W = 192;
 const CELL_H = 208;
+const PET_DB_NAME = "codex-pet-run-pets";
+const PET_DB_VERSION = 1;
 
-const PETS = [
+const BUILT_IN_PETS = [
   {
     id: "yumemin",
     name: "Yumemin",
@@ -193,14 +195,19 @@ const stageTitle = document.querySelector("#stageTitle");
 const stageAuthor = document.querySelector("#stageAuthor");
 const exportCode = document.querySelector("#exportCode");
 const importCode = document.querySelector("#importCode");
+const importPetsButton = document.querySelector("#importPetsButton");
+const clearImportedPetsButton = document.querySelector("#clearImportedPetsButton");
+const petDirectoryInput = document.querySelector("#petDirectoryInput");
 
 const state = {
   mode: "play",
+  pets: [...BUILT_IN_PETS],
   levels: [],
   level: null,
   levelIndex: 0,
-  selectedPet: PETS[0],
+  selectedPet: BUILT_IN_PETS[0],
   petImages: new Map(),
+  importedPetUrls: [],
   keys: new Set(),
   player: null,
   cameraX: 0,
@@ -294,22 +301,19 @@ function clampPoint(point, width, height) {
   };
 }
 
-function init() {
+async function init() {
   state.levels = [...BUILT_IN_LEVELS, ...loadLocalStages()].map(normalizeLevel);
-  makePetCards();
   makePalette();
   refreshLevels();
   bindEvents();
   selectLevel(0);
-  loadPetImages().then(() => {
-    drawPetCards();
-    requestAnimationFrame(loop);
-  });
+  await reloadPets();
+  requestAnimationFrame(loop);
 }
 
 function makePetCards() {
   petList.innerHTML = "";
-  for (const pet of PETS) {
+  for (const pet of state.pets) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "pet-card";
@@ -331,8 +335,9 @@ function updatePetSelection() {
 }
 
 async function loadPetImages() {
+  state.petImages.clear();
   await Promise.all(
-    PETS.map(
+    state.pets.map(
       (pet) =>
         new Promise((resolve) => {
           const img = new Image();
@@ -347,7 +352,8 @@ async function loadPetImages() {
 
 function drawPetCards() {
   for (const button of petList.querySelectorAll(".pet-card")) {
-    const pet = PETS.find((item) => item.id === button.dataset.pet);
+    const pet = state.pets.find((item) => item.id === button.dataset.pet);
+    if (!pet) continue;
     const preview = button.querySelector("canvas");
     const pctx = preview.getContext("2d");
     pctx.clearRect(0, 0, preview.width, preview.height);
@@ -423,6 +429,9 @@ function bindEvents() {
   document.querySelector("#saveStageButton").addEventListener("click", saveEditedStage);
   document.querySelector("#copyExportButton").addEventListener("click", copyExport);
   document.querySelector("#importStageButton").addEventListener("click", importStage);
+  importPetsButton.addEventListener("click", () => petDirectoryInput.click());
+  clearImportedPetsButton.addEventListener("click", clearImportedPets);
+  petDirectoryInput.addEventListener("change", () => importPetDirectory(Array.from(petDirectoryInput.files || [])));
   levelSelect.addEventListener("change", () => selectLevel(Number(levelSelect.value)));
   window.addEventListener("keydown", (event) => {
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "Space"].includes(event.code)) event.preventDefault();
@@ -438,6 +447,167 @@ function bindEvents() {
   canvas.addEventListener("pointerleave", () => {
     state.pointerDown = false;
   });
+}
+
+async function reloadPets() {
+  state.importedPetUrls.forEach((url) => URL.revokeObjectURL(url));
+  state.importedPetUrls = [];
+  const imported = await loadImportedPetRecords();
+  const importedPets = imported.map((record) => {
+    const src = URL.createObjectURL(record.sprite);
+    state.importedPetUrls.push(src);
+    return {
+      id: record.id,
+      name: record.name,
+      description: record.description,
+      src,
+      imported: true,
+    };
+  });
+  state.pets = [...BUILT_IN_PETS, ...importedPets];
+  if (!state.pets.some((pet) => pet.id === state.selectedPet.id)) state.selectedPet = state.pets[0];
+  makePetCards();
+  await loadPetImages();
+  drawPetCards();
+}
+
+async function importPetDirectory(files) {
+  if (!files.length) return;
+  try {
+    const groups = groupPetFiles(files);
+    let importedCount = 0;
+    for (const group of groups.values()) {
+      if (!group.petJson) continue;
+      const petJson = JSON.parse(await group.petJson.text());
+      const spritePath = String(petJson.spritesheetPath || "spritesheet.webp").replace(/^\.\//, "");
+      const sprite = group.filesByRelativePath.get(spritePath) || group.filesByName.get(spritePath.split("/").pop());
+      if (!sprite) continue;
+      const slug = slugify(petJson.id || petJson.displayName || group.dir || "codex-pet");
+      await saveImportedPetRecord({
+        id: `imported-${slug}-${hashString(group.dir || sprite.name)}`,
+        name: String(petJson.displayName || petJson.id || slug).slice(0, 32),
+        description: String(petJson.description || "Imported Codex pet").slice(0, 90),
+        sourceDir: group.dir,
+        sprite,
+      });
+      importedCount += 1;
+    }
+    await reloadPets();
+    statusText.textContent = importedCount
+      ? `Imported ${importedCount} local Codex pet${importedCount === 1 ? "" : "s"}.`
+      : "No pet.json + spritesheet.webp pairs were found.";
+  } catch (error) {
+    statusText.textContent = `Pet import failed: ${error.message}`;
+  } finally {
+    petDirectoryInput.value = "";
+  }
+}
+
+function groupPetFiles(files) {
+  const groups = new Map();
+  for (const file of files) {
+    const relativePath = file.webkitRelativePath || file.name;
+    const parts = relativePath.split("/").filter(Boolean);
+    const fileName = parts.at(-1) || file.name;
+    const dirParts = parts.slice(0, -1);
+    const dir = fileName === "pet.json" ? dirParts.join("/") : dirParts.join("/");
+    if (!groups.has(dir)) {
+      groups.set(dir, {
+        dir,
+        petJson: null,
+        filesByName: new Map(),
+        filesByRelativePath: new Map(),
+      });
+    }
+    const group = groups.get(dir);
+    group.filesByName.set(fileName, file);
+    group.filesByRelativePath.set(fileName, file);
+    if (fileName === "pet.json") group.petJson = file;
+  }
+  return groups;
+}
+
+function slugify(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "codex-pet";
+}
+
+function hashString(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function openPetDb() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("This browser does not support IndexedDB."));
+      return;
+    }
+    const request = indexedDB.open(PET_DB_NAME, PET_DB_VERSION);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore("pets", { keyPath: "id" });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function runPetDb(mode, callback) {
+  return openPetDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction("pets", mode);
+        const store = tx.objectStore("pets");
+        const result = callback(store);
+        tx.oncomplete = () => {
+          db.close();
+          resolve(result);
+        };
+        tx.onerror = () => {
+          db.close();
+          reject(tx.error);
+        };
+      }),
+  );
+}
+
+function saveImportedPetRecord(record) {
+  return runPetDb("readwrite", (store) => {
+    store.put({
+      id: record.id,
+      name: record.name,
+      description: record.description,
+      sourceDir: record.sourceDir,
+      sprite: record.sprite,
+      importedAt: Date.now(),
+    });
+  });
+}
+
+function loadImportedPetRecords() {
+  return runPetDb(
+    "readonly",
+    (store) =>
+      new Promise((resolve, reject) => {
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      }),
+  ).catch(() => []);
+}
+
+async function clearImportedPets() {
+  await runPetDb("readwrite", (store) => store.clear()).catch(() => {});
+  state.selectedPet = BUILT_IN_PETS[0];
+  await reloadPets();
+  statusText.textContent = "Imported pets cleared.";
 }
 
 function setMode(mode) {

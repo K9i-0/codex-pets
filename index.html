@@ -25,6 +25,12 @@
           <div class="panel">
             <h2>Pet</h2>
             <div id="petList" class="pet-list"></div>
+            <div class="pet-import">
+              <button id="importPetsButton" type="button">Import ~/.codex/pets</button>
+              <button id="clearImportedPetsButton" type="button">Clear Imported</button>
+              <input id="petDirectoryInput" type="file" webkitdirectory multiple hidden />
+            </div>
+            <p class="pet-note">GitHub Pages ではブラウザの制限により、自動ではローカルフォルダを読めません。初回だけフォルダを選択してください。</p>
           </div>
 
           <div class="panel">
