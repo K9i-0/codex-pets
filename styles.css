@@ -30,21 +30,24 @@ body {
 button,
 input,
 select,
-textarea {
+textarea,
+.nav-game-link {
   font: inherit;
 }
 
 button,
 select,
 input,
-textarea {
+textarea,
+.nav-game-link {
   border: 1px solid var(--line);
   background: #171a1f;
   color: var(--ink);
   border-radius: 7px;
 }
 
-button {
+button,
+.nav-game-link {
   min-height: 38px;
   padding: 0 14px;
   cursor: pointer;
@@ -52,9 +55,17 @@ button {
 }
 
 button:hover,
-button.active {
+button.active,
+.nav-game-link:hover {
   border-color: var(--blue);
   background: #202834;
+}
+
+.nav-game-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 button.primary,
@@ -462,10 +473,11 @@ kbd {
 
   .actions {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .actions button {
+  .actions button,
+  .actions a {
     padding: 0 8px;
   }
 

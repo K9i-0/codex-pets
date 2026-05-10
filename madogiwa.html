@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>窓際族物語 | Codex Pet RPG</title>
+    <meta name="description" content="新入社員がそば屋とやめ太郎に導かれ、Codex pets と一緒に窓際族物語を追体験する短編RPG。" />
+    <link rel="stylesheet" href="madogiwa.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="game-header">
+        <div>
+          <h1>窓際族物語</h1>
+          <p>新入社員が、そば屋とやめ太郎と一緒に窓際族物語を追体験するRPG</p>
+        </div>
+        <nav>
+          <a href="index.html">Codex Pet Run</a>
+          <button id="newGameButton" type="button">New Game</button>
+        </nav>
+      </section>
+
+      <section class="game-layout">
+        <div class="stage-panel">
+          <canvas id="rpgCanvas" width="960" height="540"></canvas>
+          <section id="nameGate" class="name-gate" aria-labelledby="nameGateTitle">
+            <form id="playerNameForm" class="name-card">
+              <h2 id="nameGateTitle">窓際族物語</h2>
+              <p class="name-speaker">そば屋</p>
+              <p class="name-line">そういえば君の名前はなんだっけ？上司から聞いたんだけど、酔っ払ってて覚えてないんだ。</p>
+              <label for="playerNameInput">名前を教える</label>
+              <div class="name-row">
+                <input id="playerNameInput" name="playerName" type="text" maxlength="12" placeholder="例: 佐藤" autocomplete="name" />
+                <button type="submit">Start</button>
+              </div>
+            </form>
+          </section>
+          <div class="mobile-pad" aria-label="mobile controls">
+            <div class="dpad">
+              <button type="button" data-key="up">↑</button>
+              <button type="button" data-key="left">←</button>
+              <button type="button" data-key="down">↓</button>
+              <button type="button" data-key="right">→</button>
+            </div>
+            <button class="talk-button" type="button" data-key="interact">Talk</button>
+          </div>
+        </div>
+
+        <aside class="side-panel">
+          <div class="card">
+            <h2>Quest</h2>
+            <p id="questText"></p>
+          </div>
+          <div class="card">
+            <h2>Inventory</h2>
+            <ul id="inventoryList"></ul>
+          </div>
+          <div class="card">
+            <h2>Controls</h2>
+            <p>Move: WASD / Arrow keys<br />Talk: Space / Enter / 画面のTalk</p>
+          </div>
+        </aside>
+      </section>
+
+      <section id="dialogBox" class="dialog hidden" aria-live="polite">
+        <strong id="speakerName"></strong>
+        <p id="dialogText"></p>
+        <button id="nextDialogButton" type="button">Next</button>
+      </section>
+    </main>
+
+    <script src="madogiwa.js"></script>
+  </body>
+</html>
