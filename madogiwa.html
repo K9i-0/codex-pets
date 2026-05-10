@@ -5,6 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>窓際族物語 | Codex Pet RPG</title>
     <meta name="description" content="新入社員がそば屋とやめ太郎に導かれ、Codex pets と一緒に窓際族物語を追体験する短編RPG。" />
+    <link rel="canonical" href="https://k9i-0.github.io/codex-pets/madogiwa.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://k9i-0.github.io/codex-pets/madogiwa.html" />
+    <meta property="og:site_name" content="Codex Pets" />
+    <meta property="og:title" content="窓際族物語 | 新入社員が追体験する短編RPG" />
+    <meta property="og:description" content="そば屋とやめ太郎に導かれ、窓際席から社内酒場までを歩くCodex pets短編RPG。" />
+    <meta property="og:image" content="https://k9i-0.github.io/codex-pets/assets/og/madogiwa-og.png" />
+    <meta property="og:image:secure_url" content="https://k9i-0.github.io/codex-pets/assets/og/madogiwa-og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="窓際族物語のゲーム画面風プレビュー。そば屋、やめ太郎、新入社員が窓際席にいる。" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="窓際族物語 | 新入社員が追体験する短編RPG" />
+    <meta name="twitter:description" content="そば屋とやめ太郎に導かれ、窓際席から社内酒場までを歩くCodex pets短編RPG。" />
+    <meta name="twitter:image" content="https://k9i-0.github.io/codex-pets/assets/og/madogiwa-og.png" />
+    <meta name="theme-color" content="#101214" />
     <link rel="stylesheet" href="madogiwa.css" />
   </head>
   <body>
@@ -33,6 +50,7 @@
                 <input id="playerNameInput" name="playerName" type="text" maxlength="12" placeholder="例: 佐藤" autocomplete="name" />
                 <button type="submit">Start</button>
               </div>
+              <button id="continueButton" class="continue-button hidden" type="button">Continue</button>
             </form>
           </section>
           <div class="mobile-pad" aria-label="mobile controls">
@@ -42,11 +60,25 @@
               <button type="button" data-key="down">↓</button>
               <button type="button" data-key="right">→</button>
             </div>
-            <button class="talk-button" type="button" data-key="interact">Talk</button>
+            <div class="mobile-actions">
+              <button class="talk-button" type="button" data-key="interact">Talk</button>
+              <button class="guide-button" type="button" data-key="guide">Guide</button>
+            </div>
           </div>
         </div>
 
         <aside class="side-panel">
+          <div class="card status-card">
+            <h2>Journey</h2>
+            <div class="status-line">
+              <span>Chapter</span>
+              <strong id="progressText">--</strong>
+            </div>
+            <div class="status-line">
+              <span>Mood</span>
+              <strong id="moodText">--</strong>
+            </div>
+          </div>
           <div class="card">
             <h2>Quest</h2>
             <p id="questText"></p>
@@ -57,7 +89,11 @@
           </div>
           <div class="card">
             <h2>Controls</h2>
-            <p>Move: WASD / Arrow keys<br />Talk: Space / Enter / 画面のTalk</p>
+            <p>Move: WASD / Arrow keys / Tap<br />Talk: Space / Enter / 画面のTalk<br />Guide: G / 画面のGuide</p>
+          </div>
+          <div class="card save-card">
+            <h2>Save</h2>
+            <p id="saveText">未開始</p>
           </div>
         </aside>
       </section>

@@ -187,6 +187,14 @@ a:hover {
   font-weight: 800;
 }
 
+.continue-button {
+  width: 100%;
+  margin-top: 10px;
+  border-color: var(--gold);
+  background: #322712;
+  font-weight: 800;
+}
+
 .side-panel {
   display: flex;
   flex-direction: column;
@@ -256,12 +264,47 @@ a:hover {
   grid-row: 2;
 }
 
-.talk-button {
+.mobile-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.talk-button,
+.guide-button {
   width: 96px;
   height: 74px;
+  font-weight: 800;
+}
+
+.talk-button {
   border-color: var(--green);
   background: #173126;
-  font-weight: 800;
+}
+
+.guide-button {
+  border-color: var(--gold);
+  background: #322712;
+}
+
+.status-card {
+  display: grid;
+  gap: 10px;
+}
+
+.status-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.status-line strong {
+  color: var(--ink);
+  text-align: right;
+}
+
+.save-card p {
+  font-size: 13px;
 }
 
 .dialog {
@@ -342,7 +385,12 @@ a:hover {
     min-height: 48px;
   }
 
-  .talk-button {
+  .mobile-actions {
+    flex-direction: column;
+  }
+
+  .talk-button,
+  .guide-button {
     width: 82px;
     height: 64px;
   }
