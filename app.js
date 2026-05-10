@@ -198,6 +198,7 @@ const importCode = document.querySelector("#importCode");
 const importPetsButton = document.querySelector("#importPetsButton");
 const clearImportedPetsButton = document.querySelector("#clearImportedPetsButton");
 const petDirectoryInput = document.querySelector("#petDirectoryInput");
+const touchControlButtons = document.querySelectorAll("[data-control]");
 
 const state = {
   mode: "play",
@@ -209,6 +210,11 @@ const state = {
   petImages: new Map(),
   importedPetUrls: [],
   keys: new Set(),
+  controls: {
+    left: false,
+    right: false,
+    jump: false,
+  },
   player: null,
   cameraX: 0,
   startedAt: 0,
@@ -441,12 +447,56 @@ function bindEvents() {
   window.addEventListener("keyup", (event) => state.keys.delete(event.code));
   canvas.addEventListener("pointerdown", handlePointer);
   canvas.addEventListener("pointermove", handlePointer);
-  canvas.addEventListener("pointerup", () => {
-    state.pointerDown = false;
+  canvas.addEventListener("pointerup", (event) => {
+    releaseCanvasPointer(event);
   });
-  canvas.addEventListener("pointerleave", () => {
-    state.pointerDown = false;
+  canvas.addEventListener("pointercancel", (event) => {
+    releaseCanvasPointer(event);
   });
+  canvas.addEventListener("pointerleave", (event) => {
+    releaseCanvasPointer(event);
+  });
+  for (const button of touchControlButtons) {
+    button.addEventListener("pointerdown", pressTouchControl);
+    button.addEventListener("pointerup", releaseTouchControl);
+    button.addEventListener("pointercancel", releaseTouchControl);
+    button.addEventListener("pointerleave", releaseTouchControl);
+    button.addEventListener("contextmenu", (event) => event.preventDefault());
+  }
+  window.addEventListener("blur", () => {
+    state.controls.left = false;
+    state.controls.right = false;
+    state.controls.jump = false;
+    state.pointerDown = false;
+    updateTouchButtons();
+  });
+}
+
+function pressTouchControl(event) {
+  event.preventDefault();
+  const control = event.currentTarget.dataset.control;
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+  if (control === "restart") {
+    resetRun();
+    return;
+  }
+  if (control in state.controls) state.controls[control] = true;
+  updateTouchButtons();
+}
+
+function releaseTouchControl(event) {
+  event.preventDefault();
+  const control = event.currentTarget.dataset.control;
+  event.currentTarget.releasePointerCapture?.(event.pointerId);
+  if (control in state.controls) state.controls[control] = false;
+  updateTouchButtons();
+}
+
+function updateTouchButtons() {
+  for (const button of touchControlButtons) {
+    const control = button.dataset.control;
+    button.classList.toggle("pressed", Boolean(state.controls[control]));
+  }
 }
 
 async function reloadPets() {
@@ -671,8 +721,8 @@ function loop(now) {
 
 function updateEditor(dt) {
   if (!state.level) return;
-  const left = state.keys.has("ArrowLeft") || state.keys.has("KeyA");
-  const right = state.keys.has("ArrowRight") || state.keys.has("KeyD");
+  const left = isLeftPressed();
+  const right = isRightPressed();
   const speed = 0.55 * dt;
   const maxCamera = Math.max(0, state.level.width * TILE - VIEW_W);
   if (left) state.cameraX = Math.max(0, state.cameraX - speed);
@@ -690,9 +740,9 @@ function updateGame(dt) {
     return;
   }
 
-  const left = state.keys.has("ArrowLeft") || state.keys.has("KeyA");
-  const right = state.keys.has("ArrowRight") || state.keys.has("KeyD");
-  const jump = state.keys.has("ArrowUp") || state.keys.has("KeyW") || state.keys.has("Space");
+  const left = isLeftPressed();
+  const right = isRightPressed();
+  const jump = isJumpPressed();
   const accel = 0.0024 * dt;
   const maxVx = 0.34;
 
@@ -723,6 +773,18 @@ function updateGame(dt) {
   state.cameraX = Math.max(0, Math.min(maxCamera, p.x - VIEW_W * 0.42));
   state.elapsed = (performance.now() - state.startedAt) / 1000;
   updateCompetition();
+}
+
+function isLeftPressed() {
+  return state.controls.left || state.keys.has("ArrowLeft") || state.keys.has("KeyA");
+}
+
+function isRightPressed() {
+  return state.controls.right || state.keys.has("ArrowRight") || state.keys.has("KeyD");
+}
+
+function isJumpPressed() {
+  return state.controls.jump || state.keys.has("ArrowUp") || state.keys.has("KeyW") || state.keys.has("Space");
 }
 
 function movePlayer(dx, dy) {
@@ -962,7 +1024,11 @@ function drawEditorGrid() {
 
 function handlePointer(event) {
   if (state.mode !== "editor") return;
-  if (event.type === "pointerdown") state.pointerDown = true;
+  event.preventDefault();
+  if (event.type === "pointerdown") {
+    state.pointerDown = true;
+    canvas.setPointerCapture?.(event.pointerId);
+  }
   if (!state.pointerDown) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = VIEW_W / rect.width;
@@ -974,6 +1040,12 @@ function handlePointer(event) {
   else setTile(state.level, x, y, state.editorTool);
   syncEditedRun();
   updateExport();
+}
+
+function releaseCanvasPointer(event) {
+  if (state.mode === "editor") event.preventDefault();
+  canvas.releasePointerCapture?.(event.pointerId);
+  state.pointerDown = false;
 }
 
 function syncEditedRun() {
