@@ -61,6 +61,7 @@ const state = {
   dialogSpeaker: "",
   pendingItem: null,
   pendingNext: undefined,
+  pendingNamePrompt: false,
   ending: false,
   message: "Startでプロローグを読む。",
   pathTarget: null,
@@ -375,6 +376,7 @@ function resetGame(showNameGate = true) {
   state.dialogSpeaker = "";
   state.pendingItem = null;
   state.pendingNext = undefined;
+  state.pendingNamePrompt = false;
   state.ending = false;
   state.pathTarget = null;
   state.chapterFlash = 18;
@@ -423,6 +425,7 @@ function beginFreshGame(clearExistingSave = true) {
   state.dialogSpeaker = "";
   state.pendingItem = null;
   state.pendingNext = undefined;
+  state.pendingNamePrompt = false;
   state.ending = false;
   state.pathTarget = null;
   state.chapterFlash = 18;
@@ -747,13 +750,20 @@ function tryInteract() {
 
   state.pathTarget = null;
   if (state.chapter === 0 && !state.awaitingName && state.playerName === DEFAULT_PLAYER_NAME) {
-    state.awaitingName = true;
-    configureGate("name");
-    nameGate.classList.remove("hidden");
-    playerNameInput.focus();
+    beginNameIntroDialog();
     return;
   }
   beginChapterDialog();
+}
+
+function beginNameIntroDialog() {
+  state.dialogSpeaker = "そば屋";
+  state.dialogQueue = [
+    "そば屋: こんにちは。俺はそば屋。窓際席に店を持つ、だいたい酔っている先輩だ。",
+    "そば屋: そういえば君の名前はなんだっけ？上司から聞いたんだけど、酔っ払ってて覚えてないんだ。",
+  ];
+  state.pendingNamePrompt = true;
+  advanceDialog();
 }
 
 function beginChapterDialog() {
@@ -769,6 +779,15 @@ function advanceDialog() {
   if (!state.dialogQueue.length) {
     dialogBox.classList.add("hidden");
     nextDialogButton.blur();
+    if (state.pendingNamePrompt) {
+      state.pendingNamePrompt = false;
+      state.awaitingName = true;
+      configureGate("name");
+      nameGate.classList.remove("hidden");
+      playerNameInput.focus();
+      updatePanels();
+      return;
+    }
     if (state.pendingItem) state.inventory.add(formatText(state.pendingItem));
     if (state.pendingNext !== undefined && state.pendingNext > state.chapter) {
       state.chapter = state.pendingNext;
@@ -808,8 +827,8 @@ function configureGate(mode) {
     return;
   }
 
-  gateSpeaker.textContent = "そば屋";
-  gateLine.textContent = "そういえば君の名前はなんだっけ？上司から聞いたんだけど、酔っ払ってて覚えてないんだ。";
+  gateSpeaker.textContent = "名前入力";
+  gateLine.textContent = "そば屋に名前を教える。今度こそ覚えてもらおう。たぶん。";
   nameLabel.classList.remove("hidden");
   nameRow.classList.remove("hidden");
   startGameButton.classList.add("hidden");
