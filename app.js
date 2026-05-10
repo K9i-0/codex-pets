@@ -220,6 +220,9 @@ const state = {
   startedAt: 0,
   elapsed: 0,
   finished: false,
+  finishTime: null,
+  runState: "ready",
+  lastFinishWasBest: false,
   coins: new Set(),
   editorTool: "#",
   pointerDown: false,
@@ -456,6 +459,9 @@ function bindEvents() {
   canvas.addEventListener("pointerleave", (event) => {
     releaseCanvasPointer(event);
   });
+  canvas.addEventListener("click", () => {
+    if (state.mode === "play") startRun();
+  });
   for (const button of touchControlButtons) {
     button.addEventListener("pointerdown", pressTouchControl);
     button.addEventListener("pointerup", releaseTouchControl);
@@ -481,6 +487,7 @@ function pressTouchControl(event) {
     resetRun();
     return;
   }
+  startRun();
   setControl(control, true);
 }
 
@@ -673,6 +680,7 @@ async function clearImportedPets() {
 
 function setMode(mode) {
   state.mode = mode;
+  clearHeldControls();
   editorPanel.classList.toggle("hidden", mode !== "editor");
   libraryPanel.classList.toggle("hidden", mode !== "library");
   document.querySelector("#playModeButton").classList.toggle("primary", mode === "play");
@@ -703,12 +711,25 @@ function resetRun() {
     animTime: 0,
   };
   state.cameraX = 0;
-  state.startedAt = performance.now();
+  state.startedAt = 0;
   state.elapsed = 0;
   state.finished = false;
+  state.finishTime = null;
+  state.runState = "ready";
+  state.lastFinishWasBest = false;
   state.coins = collectCoinKeys(state.level);
+  clearHeldControls();
+  statusText.textContent = "Ready. Move or jump to start the clock.";
   updateCompetition();
   updateStageMeta();
+}
+
+function startRun() {
+  if (state.mode !== "play" || state.runState !== "ready" || !state.player) return;
+  state.runState = "running";
+  state.startedAt = performance.now();
+  state.elapsed = 0;
+  statusText.textContent = "Run started. Reach the flag.";
 }
 
 function collectCoinKeys(level) {
@@ -744,6 +765,13 @@ function updateGame(dt) {
   if (!state.player || !state.level || state.finished) return;
   const p = state.player;
   p.animTime += dt;
+  if (state.runState === "ready") {
+    if (isLeftPressed() || isRightPressed() || isJumpPressed()) startRun();
+    if (state.runState === "ready") {
+      updateCompetition();
+      return;
+    }
+  }
   if (p.dead) {
     p.vy += 0.0017 * dt;
     p.y += p.vy * dt;
@@ -897,10 +925,14 @@ function checkGoal() {
   const goal = { x: state.level.goal.x * TILE + 6, y: state.level.goal.y * TILE - 42, w: 28, h: 76 };
   if (rectsOverlap(p, goal)) {
     state.finished = true;
+    state.runState = "finished";
     const time = (performance.now() - state.startedAt) / 1000;
+    const bestBefore = getScores(state.level.id)[0];
+    state.finishTime = time;
+    state.lastFinishWasBest = !bestBefore || time < bestBefore.time;
     saveScore(time);
     timerEl.textContent = formatTime(time);
-    statusText.textContent = `Clear! ${formatTime(time)}`;
+    statusText.textContent = `Clear! ${formatTime(time)}${state.lastFinishWasBest ? " New best!" : ""}`;
     updateCompetition();
   }
 }
@@ -929,8 +961,97 @@ function draw() {
   drawGoal();
   drawPlayer();
   if (state.mode === "editor") drawEditorGrid();
+  drawRaceHud();
+  drawRunOverlay();
   const totalCoins = collectCoinKeys(state.level).size;
   coinText.textContent = `Coins ${totalCoins - state.coins.size}/${totalCoins}`;
+}
+
+function drawRaceHud() {
+  const totalCoins = collectCoinKeys(state.level).size;
+  const collectedCoins = totalCoins - state.coins.size;
+  drawHudPill(18, 16, 168, "TIME", formatTime(state.finishTime ?? state.elapsed));
+  drawHudPill(VIEW_W - 178, 16, 160, "COINS", `${collectedCoins}/${totalCoins}`);
+}
+
+function drawHudPill(x, y, w, label, value) {
+  ctx.save();
+  ctx.fillStyle = "rgba(17, 19, 22, 0.76)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+  roundRect(x, y, w, 48, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#aeb8c2";
+  ctx.font = "700 11px system-ui, sans-serif";
+  ctx.fillText(label, x + 14, y + 17);
+  ctx.fillStyle = "#edf2f4";
+  ctx.font = "800 22px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.fillText(value, x + 14, y + 39);
+  ctx.restore();
+}
+
+function drawRunOverlay() {
+  if (state.mode === "editor" || state.runState === "running") return;
+  ctx.save();
+  ctx.fillStyle = "rgba(17, 19, 22, 0.34)";
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  if (state.runState === "finished") drawFinishOverlay();
+  else drawReadyOverlay();
+  ctx.restore();
+}
+
+function drawReadyOverlay() {
+  const best = getScores(state.level?.id || "")[0];
+  drawOverlayPanel(270, 150, 420, 206);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#edf2f4";
+  ctx.font = "900 40px system-ui, sans-serif";
+  ctx.fillText("READY", VIEW_W / 2, 210);
+  ctx.fillStyle = "#f2c14e";
+  ctx.font = "700 18px system-ui, sans-serif";
+  ctx.fillText(state.level?.title || "Stage", VIEW_W / 2, 246);
+  ctx.fillStyle = "#c5ced8";
+  ctx.font = "600 16px system-ui, sans-serif";
+  ctx.fillText("Move or jump to start the timer", VIEW_W / 2, 284);
+  ctx.fillStyle = "#aeb8c2";
+  ctx.font = "600 14px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.fillText(`BEST ${best ? formatTime(best.time) : "--"}`, VIEW_W / 2, 318);
+}
+
+function drawFinishOverlay() {
+  drawOverlayPanel(250, 126, 460, 274);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#48bf84";
+  ctx.font = "900 28px system-ui, sans-serif";
+  ctx.fillText(state.lastFinishWasBest ? "NEW BEST" : "CLEAR", VIEW_W / 2, 184);
+  ctx.fillStyle = "#edf2f4";
+  ctx.font = "900 56px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.fillText(formatTime(state.finishTime ?? state.elapsed), VIEW_W / 2, 250);
+  ctx.fillStyle = "#c5ced8";
+  ctx.font = "600 16px system-ui, sans-serif";
+  ctx.fillText(`${state.selectedPet.name} finished ${state.level?.title || "the stage"}`, VIEW_W / 2, 292);
+  ctx.fillStyle = "#aeb8c2";
+  ctx.font = "600 14px system-ui, sans-serif";
+  ctx.fillText("Restart to run again", VIEW_W / 2, 334);
+}
+
+function drawOverlayPanel(x, y, w, h) {
+  ctx.fillStyle = "rgba(28, 32, 38, 0.92)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+  ctx.lineWidth = 2;
+  roundRect(x, y, w, h, 10);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }
 
 function drawSky() {
@@ -1167,7 +1288,7 @@ function scoreKey(levelId) {
 }
 
 function updateCompetition() {
-  timerEl.textContent = state.finished ? timerEl.textContent : formatTime(state.elapsed);
+  timerEl.textContent = formatTime(state.finishTime ?? state.elapsed);
   const scores = getScores(state.level?.id || "");
   bestTimeEl.textContent = scores[0] ? formatTime(scores[0].time) : "--";
   leaderboardEl.innerHTML = "";

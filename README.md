@@ -32,6 +32,7 @@ Browsers cannot read `~/.codex/pets` automatically from GitHub Pages. Use the `I
 - `A` / `D` or arrow keys: move
 - `W` / `Space`: jump
 - `R`: restart
+- The timer starts only after the first move or jump input.
 - On phones and tablets, use the on-screen controller: left/right pad, Jump, and restart.
 - In editor mode, `A` / `D` or arrow keys scroll the canvas horizontally.
 - In editor mode on touch devices, use the on-screen left and right buttons to scroll the canvas horizontally, and paint directly on the canvas.
