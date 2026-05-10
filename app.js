@@ -461,34 +461,38 @@ function bindEvents() {
     button.addEventListener("pointerup", releaseTouchControl);
     button.addEventListener("pointercancel", releaseTouchControl);
     button.addEventListener("pointerleave", releaseTouchControl);
+    button.addEventListener("touchstart", pressTouchControl, { passive: false });
+    button.addEventListener("touchend", releaseTouchControl, { passive: false });
+    button.addEventListener("touchcancel", releaseTouchControl, { passive: false });
+    button.addEventListener("touchmove", (event) => event.preventDefault(), { passive: false });
     button.addEventListener("contextmenu", (event) => event.preventDefault());
   }
   window.addEventListener("blur", () => {
-    state.controls.left = false;
-    state.controls.right = false;
-    state.controls.jump = false;
+    clearHeldControls();
     state.pointerDown = false;
-    updateTouchButtons();
   });
 }
 
 function pressTouchControl(event) {
   event.preventDefault();
   const control = event.currentTarget.dataset.control;
-  event.currentTarget.setPointerCapture?.(event.pointerId);
+  if (event.pointerId !== undefined) event.currentTarget.setPointerCapture?.(event.pointerId);
   if (control === "restart") {
     resetRun();
     return;
   }
-  if (control in state.controls) state.controls[control] = true;
-  updateTouchButtons();
+  setControl(control, true);
 }
 
 function releaseTouchControl(event) {
   event.preventDefault();
   const control = event.currentTarget.dataset.control;
-  event.currentTarget.releasePointerCapture?.(event.pointerId);
-  if (control in state.controls) state.controls[control] = false;
+  if (event.pointerId !== undefined) event.currentTarget.releasePointerCapture?.(event.pointerId);
+  setControl(control, false);
+}
+
+function setControl(control, pressed) {
+  if (control in state.controls) state.controls[control] = pressed;
   updateTouchButtons();
 }
 
@@ -497,6 +501,13 @@ function updateTouchButtons() {
     const control = button.dataset.control;
     button.classList.toggle("pressed", Boolean(state.controls[control]));
   }
+}
+
+function clearHeldControls() {
+  state.controls.left = false;
+  state.controls.right = false;
+  state.controls.jump = false;
+  updateTouchButtons();
 }
 
 async function reloadPets() {

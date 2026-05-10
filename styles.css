@@ -64,6 +64,8 @@ button.primary,
 }
 
 .shell {
+  display: flex;
+  flex-direction: column;
   width: min(1480px, calc(100vw - 28px));
   margin: 0 auto;
   padding: 18px 0 28px;
@@ -267,21 +269,22 @@ textarea {
   display: none;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 10px;
+  gap: 14px;
+  margin-top: 12px;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.touch-group {
+.touch-pad,
+.touch-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
 .touch-button {
-  width: 58px;
-  height: 58px;
-  min-height: 58px;
+  width: 64px;
+  height: 64px;
+  min-height: 64px;
   padding: 0;
   border-color: #4a5664;
   background: #171d24;
@@ -292,11 +295,20 @@ textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
+.touch-button.move {
+  width: 72px;
+}
+
 .touch-button.jump {
-  width: 88px;
+  width: 104px;
   border-color: var(--green);
   background: #173126;
   font-size: 16px;
+}
+
+.touch-button.restart {
+  width: 64px;
+  font-size: 24px;
 }
 
 .touch-button.pressed {
@@ -369,6 +381,21 @@ kbd {
 }
 
 @media (max-width: 900px) {
+  .layout {
+    order: 1;
+    margin-top: 0;
+  }
+
+  .topbar {
+    order: 2;
+    margin-top: 14px;
+  }
+
+  .editor,
+  .library {
+    order: 3;
+  }
+
   .topbar,
   .editor-head,
   .share-grid {
@@ -412,7 +439,7 @@ kbd {
 @media (max-width: 560px) {
   .shell {
     width: min(100vw - 10px, 1480px);
-    padding-top: 8px;
+    padding-top: 5px;
   }
 
   .topbar,
@@ -448,14 +475,32 @@ kbd {
     font-size: 12px;
   }
 
+  .touch-controls {
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .touch-pad,
+  .touch-actions {
+    gap: 8px;
+  }
+
   .touch-button {
-    width: 54px;
-    height: 54px;
-    min-height: 54px;
+    width: 52px;
+    height: 56px;
+    min-height: 56px;
+  }
+
+  .touch-button.move {
+    width: 64px;
   }
 
   .touch-button.jump {
-    width: 78px;
+    width: 86px;
+  }
+
+  .touch-button.restart {
+    width: 52px;
   }
 
   .pet-import,
