@@ -774,9 +774,10 @@ function updateGame(dt) {
   p.vy += 0.0022 * dt;
   p.vy = Math.min(p.vy, 0.74);
 
+  const previousRect = { x: p.x, y: p.y, w: p.w, h: p.h };
   movePlayer(p.vx * dt, 0);
   movePlayer(0, p.vy * dt);
-  checkHazardsAndCoins();
+  checkHazardsAndCoins(previousRect);
   checkGoal();
   if (p.y > LEVEL_H * TILE + 80) killPlayer();
 
@@ -841,20 +842,46 @@ function solidTilesAround(rect) {
   return tiles;
 }
 
-function checkHazardsAndCoins() {
+function checkHazardsAndCoins(previousRect = state.player) {
   const p = state.player;
-  const minX = Math.floor(p.x / TILE);
-  const maxX = Math.floor((p.x + p.w) / TILE);
-  const minY = Math.floor(p.y / TILE);
-  const maxY = Math.floor((p.y + p.h) / TILE);
+  const swept = {
+    x: Math.min(previousRect.x, p.x),
+    y: Math.min(previousRect.y, p.y),
+    w: Math.max(previousRect.x + previousRect.w, p.x + p.w) - Math.min(previousRect.x, p.x),
+    h: Math.max(previousRect.y + previousRect.h, p.y + p.h) - Math.min(previousRect.y, p.y),
+  };
+  const pickup = inflateRect(swept, 8);
+  const minX = Math.floor(pickup.x / TILE);
+  const maxX = Math.floor((pickup.x + pickup.w) / TILE);
+  const minY = Math.floor(pickup.y / TILE);
+  const maxY = Math.floor((pickup.y + pickup.h) / TILE);
   for (let y = minY; y <= maxY; y += 1) {
     for (let x = minX; x <= maxX; x += 1) {
       const key = `${x},${y}`;
       const ch = tileAt(state.level, x, y);
-      if (ch === "^") killPlayer();
-      if (ch === "o" && state.coins.has(key)) state.coins.delete(key);
+      const tileRect = { x: x * TILE, y: y * TILE, w: TILE, h: TILE };
+      if (ch === "^" && rectsOverlap(p, tileRect)) killPlayer();
+      if (ch === "o" && state.coins.has(key) && rectsOverlap(pickup, coinPickupRect(x, y))) state.coins.delete(key);
     }
   }
+}
+
+function coinPickupRect(x, y) {
+  return {
+    x: x * TILE + 3,
+    y: y * TILE + 2,
+    w: TILE - 6,
+    h: TILE - 4,
+  };
+}
+
+function inflateRect(rect, amount) {
+  return {
+    x: rect.x - amount,
+    y: rect.y - amount,
+    w: rect.w + amount * 2,
+    h: rect.h + amount * 2,
+  };
 }
 
 function killPlayer() {
