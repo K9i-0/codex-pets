@@ -187,12 +187,21 @@ a:hover {
   font-weight: 800;
 }
 
+.start-button,
 .continue-button {
   width: 100%;
   margin-top: 10px;
+  font-weight: 800;
+}
+
+.start-button {
+  border-color: var(--green);
+  background: #173126;
+}
+
+.continue-button {
   border-color: var(--gold);
   background: #322712;
-  font-weight: 800;
 }
 
 .side-panel {

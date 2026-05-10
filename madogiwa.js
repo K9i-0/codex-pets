@@ -21,7 +21,12 @@ const dialogText = document.querySelector("#dialogText");
 const nextDialogButton = document.querySelector("#nextDialogButton");
 const nameGate = document.querySelector("#nameGate");
 const playerNameForm = document.querySelector("#playerNameForm");
+const gateSpeaker = document.querySelector("#gateSpeaker");
+const gateLine = document.querySelector("#gateLine");
+const nameLabel = document.querySelector("#nameLabel");
+const nameRow = document.querySelector("#nameRow");
 const playerNameInput = document.querySelector("#playerNameInput");
+const startGameButton = document.querySelector("#startGameButton");
 const continueButton = document.querySelector("#continueButton");
 
 const spriteSources = {
@@ -48,6 +53,7 @@ const player = {
 
 const state = {
   started: false,
+  awaitingName: false,
   playerName: DEFAULT_PLAYER_NAME,
   chapter: 0,
   inventory: new Set(),
@@ -56,7 +62,7 @@ const state = {
   pendingItem: null,
   pendingNext: undefined,
   ending: false,
-  message: "名前を入力して開始する。",
+  message: "Startでプロローグを読む。",
   pathTarget: null,
   chapterFlash: 0,
 };
@@ -361,7 +367,9 @@ function resetGame(showNameGate = true) {
   player.x = 128;
   player.y = 350;
   state.chapter = 0;
-  state.started = !showNameGate;
+  state.started = false;
+  state.awaitingName = false;
+  state.playerName = DEFAULT_PLAYER_NAME;
   state.inventory.clear();
   state.dialogQueue = [];
   state.dialogSpeaker = "";
@@ -370,30 +378,67 @@ function resetGame(showNameGate = true) {
   state.ending = false;
   state.pathTarget = null;
   state.chapterFlash = 18;
-  state.message = showNameGate ? "名前を入力して開始する。" : "Space / Talk で会話。そば屋に声をかける。";
+  state.message = "Startでプロローグを読む。";
   dialogBox.classList.add("hidden");
   nameGate.classList.toggle("hidden", !showNameGate);
+  configureGate("title");
   keys.clear();
   for (const key of Object.keys(heldControls)) heldControls[key] = false;
-  if (!showNameGate) saveProgress();
   updatePanels();
 }
 
-function startGame() {
+function startPrologue() {
+  state.started = true;
+  state.awaitingName = false;
+  state.message = "プロローグを読んだら、そば屋に話しかける。";
+  configureGate("prologue");
+  updatePanels();
+}
+
+function closePrologue() {
+  nameGate.classList.add("hidden");
+  state.message = "Space / Talk でそば屋に声をかける。";
+  updatePanels();
+}
+
+function submitPlayerName() {
   const name = playerNameInput.value.trim().replace(/\s+/g, " ").slice(0, 12);
   state.playerName = name || DEFAULT_PLAYER_NAME;
   playerNameInput.value = state.playerName;
-  clearSave();
-  resetGame(false);
-  playerNameInput.blur();
+  state.awaitingName = false;
+  nameGate.classList.add("hidden");
+  beginChapterDialog();
+}
+
+function beginFreshGame(clearExistingSave = true) {
+  if (clearExistingSave) clearSave();
+  state.started = true;
+  state.awaitingName = false;
+  state.playerName = DEFAULT_PLAYER_NAME;
+  player.x = 128;
+  player.y = 350;
+  state.chapter = 0;
+  state.inventory.clear();
+  state.dialogQueue = [];
+  state.dialogSpeaker = "";
+  state.pendingItem = null;
+  state.pendingNext = undefined;
+  state.ending = false;
+  state.pathTarget = null;
+  state.chapterFlash = 18;
+  state.message = "Space / Talk でそば屋に声をかける。";
+  nameGate.classList.add("hidden");
+  keys.clear();
+  for (const key of Object.keys(heldControls)) heldControls[key] = false;
+  updatePanels();
 }
 
 function continueGame() {
   const save = readSave();
   if (!save) return;
+  beginFreshGame(false);
   state.playerName = save.playerName || DEFAULT_PLAYER_NAME;
   playerNameInput.value = state.playerName;
-  resetGame(false);
   state.chapter = clamp(save.chapter || 0, 0, story.length);
   state.ending = Boolean(save.ending) || state.chapter >= story.length;
   state.inventory = new Set(Array.isArray(save.inventory) ? save.inventory : []);
@@ -404,7 +449,7 @@ function continueGame() {
 
 function updatePanels() {
   if (!state.started) {
-    questText.textContent = "そば屋に名前を教えて、窓際族物語を始める。";
+    questText.textContent = "Startでプロローグを読み、窓際族物語を始める。";
     progressText.textContent = "--";
     moodText.textContent = "開始前";
   } else {
@@ -430,7 +475,7 @@ function updatePanels() {
   }
 
   const save = readSave();
-  continueButton.classList.toggle("hidden", !save);
+  continueButton.classList.toggle("hidden", state.started || state.awaitingName || !save);
   saveText.textContent = save
     ? `${save.playerName || DEFAULT_PLAYER_NAME} / ${save.ending ? "完" : `${(save.chapter || 0) + 1}章`} まで保存`
     : state.started
@@ -683,7 +728,7 @@ function drawEnding() {
 
 function tryInteract() {
   if (!state.started) {
-    playerNameInput.focus();
+    startPrologue();
     return;
   }
   if (state.dialogQueue.length) {
@@ -701,6 +746,18 @@ function tryInteract() {
   }
 
   state.pathTarget = null;
+  if (state.chapter === 0 && !state.awaitingName && state.playerName === DEFAULT_PLAYER_NAME) {
+    state.awaitingName = true;
+    configureGate("name");
+    nameGate.classList.remove("hidden");
+    playerNameInput.focus();
+    return;
+  }
+  beginChapterDialog();
+}
+
+function beginChapterDialog() {
+  const actor = actors[currentStory().target];
   state.dialogSpeaker = actor.name;
   state.dialogQueue = [...currentStory().lines];
   state.pendingItem = currentStory().item || null;
@@ -730,6 +787,34 @@ function advanceDialog() {
   dialogBox.classList.remove("hidden");
 }
 
+function configureGate(mode) {
+  playerNameInput.blur();
+  nameLabel.classList.add("hidden");
+  nameRow.classList.add("hidden");
+  startGameButton.classList.remove("hidden");
+
+  if (mode === "title") {
+    gateSpeaker.textContent = "プロローグ";
+    gateLine.textContent = "窓際席に配属された新入社員は、窓辺の青い影のそばに立つ人物を見つける。";
+    startGameButton.textContent = "Start";
+    return;
+  }
+
+  if (mode === "prologue") {
+    gateSpeaker.textContent = "プロローグ";
+    gateLine.textContent =
+      "初日の午後。社内の端っこにある窓際席だけ、時間の流れが少し遅い。そこには、そば屋と呼ばれる先輩がいた。まずは彼に話しかけよう。";
+    startGameButton.textContent = "窓際席へ";
+    return;
+  }
+
+  gateSpeaker.textContent = "そば屋";
+  gateLine.textContent = "そういえば君の名前はなんだっけ？上司から聞いたんだけど、酔っ払ってて覚えてないんだ。";
+  nameLabel.classList.remove("hidden");
+  nameRow.classList.remove("hidden");
+  startGameButton.classList.add("hidden");
+}
+
 function guideToTarget(autoInteract = false) {
   if (!state.started || state.ending) return;
   const actor = actors[currentStory().target];
@@ -742,7 +827,7 @@ function guideToTarget(autoInteract = false) {
 }
 
 function handleCanvasPointer(event) {
-  if (!state.started || state.ending) return;
+  if (!state.started || state.awaitingName || state.ending) return;
   event.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const x = ((event.clientX - rect.left) / rect.width) * W;
@@ -867,10 +952,15 @@ for (const button of document.querySelectorAll("[data-key]")) {
 canvas.addEventListener("pointerdown", handleCanvasPointer);
 nextDialogButton.addEventListener("click", advanceDialog);
 document.querySelector("#newGameButton").addEventListener("click", () => resetGame(true));
+startGameButton.addEventListener("click", () => {
+  if (!state.started) startPrologue();
+  else closePrologue();
+});
 continueButton.addEventListener("click", continueGame);
 playerNameForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  startGame();
+  if (state.awaitingName) submitPlayerName();
+  else if (!state.started) startPrologue();
 });
 
 loadSprites().then(() => {

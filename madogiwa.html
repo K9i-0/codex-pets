@@ -43,13 +43,14 @@
           <section id="nameGate" class="name-gate" aria-labelledby="nameGateTitle">
             <form id="playerNameForm" class="name-card">
               <h2 id="nameGateTitle">窓際族物語</h2>
-              <p class="name-speaker">そば屋</p>
-              <p class="name-line">そういえば君の名前はなんだっけ？上司から聞いたんだけど、酔っ払ってて覚えてないんだ。</p>
-              <label for="playerNameInput">名前を教える</label>
-              <div class="name-row">
+              <p id="gateSpeaker" class="name-speaker">プロローグ</p>
+              <p id="gateLine" class="name-line">窓際席に配属された新入社員は、窓辺の青い影のそばに立つ人物を見つける。</p>
+              <label id="nameLabel" class="hidden" for="playerNameInput">名前を教える</label>
+              <div id="nameRow" class="name-row hidden">
                 <input id="playerNameInput" name="playerName" type="text" maxlength="12" placeholder="例: 佐藤" autocomplete="name" />
-                <button type="submit">Start</button>
+                <button type="submit">OK</button>
               </div>
+              <button id="startGameButton" class="start-button" type="button">Start</button>
               <button id="continueButton" class="continue-button hidden" type="button">Continue</button>
             </form>
           </section>
