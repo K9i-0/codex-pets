@@ -155,6 +155,23 @@ class CodexPetBubble extends StatelessWidget {
     this.onTap,
   });
 
+  factory CodexPetBubble.fromConfig({
+    Key? key,
+    required CodexPetBubbleConfig config,
+  }) {
+    return CodexPetBubble(
+      key: key,
+      title: config.title,
+      message: config.message,
+      tone: config.tone,
+      placement: config.placement,
+      maxWidth: config.maxWidth,
+      showTail: config.showTail,
+      style: config.style,
+      onTap: config.onTap,
+    );
+  }
+
   final String? title;
   final String message;
   final CodexPetBubbleTone tone;
@@ -234,6 +251,31 @@ class CodexPetBubble extends StatelessWidget {
     if (onTap == null) return child;
     return GestureDetector(onTap: onTap, child: child);
   }
+}
+
+@immutable
+class CodexPetBubbleConfig {
+  const CodexPetBubbleConfig({
+    required this.message,
+    this.title,
+    this.tone = CodexPetBubbleTone.info,
+    this.placement = CodexPetBubblePlacement.topEnd,
+    this.maxWidth = 276,
+    this.gap = 4,
+    this.showTail = true,
+    this.style = const CodexPetBubbleStyle(),
+    this.onTap,
+  });
+
+  final String? title;
+  final String message;
+  final CodexPetBubbleTone tone;
+  final CodexPetBubblePlacement placement;
+  final double maxWidth;
+  final double gap;
+  final bool showTail;
+  final CodexPetBubbleStyle style;
+  final VoidCallback? onTap;
 }
 
 @immutable
@@ -332,15 +374,10 @@ class CodexPetWithBubble extends StatelessWidget {
     this.filterQuality = FilterQuality.none,
     this.bundle,
     this.errorBuilder,
+    this.showBubble = true,
     this.bubble,
-    this.bubbleTitle,
-    this.bubbleMessage,
-    this.bubbleTone = CodexPetBubbleTone.info,
-    this.bubblePlacement = CodexPetBubblePlacement.topEnd,
-    this.bubbleMaxWidth = 276,
-    this.bubbleGap = 4,
-    this.showBubbleTail = true,
-    this.bubbleStyle = const CodexPetBubbleStyle(),
+    this.customBubble,
+    this.bubbleAffectsLayout = false,
   });
 
   final String manifestPath;
@@ -354,18 +391,15 @@ class CodexPetWithBubble extends StatelessWidget {
   final FilterQuality filterQuality;
   final AssetBundle? bundle;
   final Widget Function(BuildContext context, Object error)? errorBuilder;
-  final Widget? bubble;
-  final String? bubbleTitle;
-  final String? bubbleMessage;
-  final CodexPetBubbleTone bubbleTone;
-  final CodexPetBubblePlacement bubblePlacement;
-  final double bubbleMaxWidth;
-  final double bubbleGap;
-  final bool showBubbleTail;
-  final CodexPetBubbleStyle bubbleStyle;
+  final bool showBubble;
+  final CodexPetBubbleConfig? bubble;
+  final Widget? customBubble;
+  final bool bubbleAffectsLayout;
 
   @override
   Widget build(BuildContext context) {
+    final petWidth = width ?? size ?? codexPetCellWidth.toDouble();
+    final petHeight = height ?? size ?? codexPetCellHeight.toDouble();
     final pet = CodexPetView.asset(
       manifestPath: manifestPath,
       animation: animation,
@@ -379,33 +413,66 @@ class CodexPetWithBubble extends StatelessWidget {
       bundle: bundle,
       errorBuilder: errorBuilder,
     );
-    final bubbleWidget = bubble ?? _buildDefaultBubble();
+    final bubbleWidget = _buildBubble();
     if (bubbleWidget == null) return pet;
 
-    final children = bubblePlacement.isAbovePet
-        ? <Widget>[bubbleWidget, SizedBox(height: bubbleGap), pet]
-        : <Widget>[pet, SizedBox(height: bubbleGap), bubbleWidget];
+    final placement = bubble?.placement ?? CodexPetBubblePlacement.topEnd;
+    final gap = bubble?.gap ?? 4;
+
+    if (!bubbleAffectsLayout) {
+      return SizedBox(
+        width: petWidth,
+        height: petHeight,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(child: pet),
+            _positionBubble(
+              bubble: bubbleWidget,
+              placement: placement,
+              gap: gap,
+              petWidth: petWidth,
+              petHeight: petHeight,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final children = placement.isAbovePet
+        ? <Widget>[bubbleWidget, SizedBox(height: gap), pet]
+        : <Widget>[pet, SizedBox(height: gap), bubbleWidget];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: bubblePlacement.isEnd
+      crossAxisAlignment: placement.isEnd
           ? CrossAxisAlignment.end
           : CrossAxisAlignment.start,
       children: children,
     );
   }
 
-  Widget? _buildDefaultBubble() {
-    final message = bubbleMessage;
-    if (message == null || message.isEmpty) return null;
-    return CodexPetBubble(
-      title: bubbleTitle,
-      message: message,
-      tone: bubbleTone,
-      placement: bubblePlacement,
-      maxWidth: bubbleMaxWidth,
-      showTail: showBubbleTail,
-      style: bubbleStyle,
+  Widget? _buildBubble() {
+    if (!showBubble) return null;
+    if (customBubble != null) return customBubble;
+    final config = bubble;
+    if (config == null || config.message.isEmpty) return null;
+    return CodexPetBubble.fromConfig(config: config);
+  }
+
+  Positioned _positionBubble({
+    required Widget bubble,
+    required CodexPetBubblePlacement placement,
+    required double gap,
+    required double petWidth,
+    required double petHeight,
+  }) {
+    return Positioned(
+      left: placement.isEnd ? null : 0,
+      right: placement.isEnd ? 0 : null,
+      top: placement.isAbovePet ? null : petHeight + gap,
+      bottom: placement.isAbovePet ? petHeight + gap : null,
+      child: bubble,
     );
   }
 }

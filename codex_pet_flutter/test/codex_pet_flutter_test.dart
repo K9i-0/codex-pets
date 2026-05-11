@@ -37,17 +37,34 @@ void main() {
 
   testWidgets('renders a Codex pet bubble', (tester) async {
     await tester.pumpWidget(
-      const Directionality(
+      Directionality(
         textDirection: TextDirection.ltr,
-        child: CodexPetBubble(
-          title: 'Yametaro',
-          message: 'Ready for review',
-          tone: CodexPetBubbleTone.review,
+        child: CodexPetBubble.fromConfig(
+          config: const CodexPetBubbleConfig(
+            title: 'Yametaro',
+            message: 'Ready for review',
+            tone: CodexPetBubbleTone.review,
+          ),
         ),
       ),
     );
 
     expect(find.text('Yametaro'), findsOneWidget);
     expect(find.text('Ready for review'), findsOneWidget);
+  });
+
+  testWidgets('can hide a configured bubble', (tester) async {
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: CodexPetWithBubble.asset(
+          manifestPath: 'missing/pet.json',
+          showBubble: false,
+          bubble: CodexPetBubbleConfig(message: 'Hidden bubble'),
+        ),
+      ),
+    );
+
+    expect(find.text('Hidden bubble'), findsNothing);
   });
 }

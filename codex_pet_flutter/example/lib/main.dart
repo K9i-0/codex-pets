@@ -135,30 +135,16 @@ class _PetExampleScreenState extends State<PetExampleScreen> {
                       setState(() => _animation = _restingAnimation),
                   onPanCancel: () =>
                       setState(() => _animation = _restingAnimation),
-                  child: SizedBox.square(
-                    dimension: _petSize,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned(
-                          right: 0,
-                          bottom: _petSize + 4,
-                          child: CodexPetBubble(
-                            title: _selectedPet.name,
-                            message: _bubbleMessage,
-                            tone: _bubbleTone,
-                            maxWidth: _bubbleMaxWidth,
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: CodexPetView.asset(
-                            key: ValueKey(_selectedPet.id),
-                            manifestPath: _selectedPet.manifestPath,
-                            animation: _animation,
-                            size: _petSize,
-                          ),
-                        ),
-                      ],
+                  child: CodexPetWithBubble.asset(
+                    key: ValueKey(_selectedPet.id),
+                    manifestPath: _selectedPet.manifestPath,
+                    animation: _animation,
+                    size: _petSize,
+                    bubble: CodexPetBubbleConfig(
+                      title: _selectedPet.name,
+                      message: _bubbleMessage,
+                      tone: _bubbleTone,
+                      maxWidth: _bubbleMaxWidth,
                     ),
                   ),
                 ),
